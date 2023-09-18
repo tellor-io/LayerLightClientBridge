@@ -52,6 +52,15 @@ contract LayerLightClientBridge {
         bytes32 transferToUpgradeStoresMerkleHash; // [I15]
     }
 
+    // struct MultistoreData {
+    //     bytes32 oracleIAVLStateHash;
+    //     bytes32 mintStoreMerkleHash;
+    //     bytes32 icaControllerToIcaMerkleHash;
+    //     bytes32 feeGrantToIbcMerkleHash;
+    //     bytes32 accToEvidenceMerkleHash;
+    //     bytes32 paramsToVestingMerkleHash;
+    // }
+
     struct BlockHeaderMerkleParts {
         bytes32 versionAndChainIdHash; // [1A]
         uint64 height; // [2]
@@ -83,8 +92,18 @@ contract LayerLightClientBridge {
         bytes32 siblingHash;
     }
 
-    function init() external {
+    function init(
+        address[] calldata _validators, 
+        uint256[] calldata _powers, 
+        string calldata _encodedChainID
+    ) external {
+        require(encodedChainId.length == 0, "Already initialized");
         // set initial state, validator addresses and weights
+        for (uint256 _i=0; _i<_validators.length; _i++) {
+            validatorPowers[_validators[_i]] = _powers[_i];
+            totalValidatorPower += _powers[_i];
+        }
+        encodedChainId = abi.encode(_encodedChainID);
     }
 
     function relayBlock(
@@ -232,7 +251,7 @@ contract LayerLightClientBridge {
         return _blockHeader;
     } 
 
-    function getAppHash(MultistoreData memory _store) internal pure returns(bytes32) {
+    function getAppHash(MultistoreData memory _store) public pure returns(bytes32) {
         bytes32 _appHash = _merkleInnerHash(
             _merkleInnerHash(
                 _store.authToFeegrantStoresMerkleHash,
@@ -242,8 +261,8 @@ contract LayerLightClientBridge {
                         _merkleInnerHash(
                             _merkleLeafHash(
                                 abi.encodePacked(
-                                        hex"066f7261636c6520", // oracle prefix (uint8(6) + "oracle" + uint8(32)) NOTE: Switch to Tellor Layer oracle prefix
-                                        sha256(
+                                        hex"066c7571636861696e20", // oracle prefix (uint8(6) + "oracle" + uint8(32)) NOTE: Switch to Tellor Layer oracle prefix
+                                        sha256(                    // using (uint8(6) + "luqchain" + uint8(32)) /// oracle: 0x6f7261636c65 ; luqchain: 0x6c7571636861696e
                                             abi.encodePacked(
                                                 _store.oracleIAVLStateHash
                                             )
