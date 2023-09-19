@@ -58,10 +58,10 @@ contract CounterTest is Test {
         assertEq(bridge.testNumber(), x);
     }
 
-    // function testVerifyBlockHeader() public {
-    //     bool result = bridge.verifyBlockHeader(multistore, merkleParts, votePart, sigDataArray);
-    //     assertEq(result, true);
-    // }
+    function testVerifyBlockHeader() public {
+        bool result = bridge.verifyBlockHeader(multistore, merkleParts, votePart, sigDataArray);
+        assertEq(result, true);
+    }
 
     function testGetAppHash() public {
         bytes32 appHash = bridge.getAppHash(multistore);

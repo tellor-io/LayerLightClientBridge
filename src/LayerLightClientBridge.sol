@@ -251,7 +251,41 @@ contract LayerLightClientBridge {
         return _blockHeader;
     } 
 
-    function getAppHash(MultistoreData memory _store) public pure returns(bytes32) {
+/*
+                                       _______________________[AppHash]______________
+                                      /                                              \
+                   _________________[I19]_________________                         ____[I20*]____
+                  /                                       \	                      /              \
+         _______[I15*]______                       _______[I16]_________        [GHIJ]           [KLMN]
+        /                   \                     /                     \
+    __[I8]__              __[I9]__            __[I10*]__             __[I11]__
+   /        \            /         \         /          \           /         \
+ [I0]      [I1]       [I2]        [I3]     [I4]         [I5]      [I6*]       [I7]
+ /  \     /   \      /   \      /    \    /    \        /  \      /   \      /   \
+[0] [1]  [2]   [3]  [4]  [5]  [6]    [7] [8]   [9]     [A] [B]   [C]  [D]  [E*]  [F*]
+Right[F], Left[I6], Left[I10], Left[I15], Right[I20]
+[0] - acc (auth)     [1] - authz     [2] - bank      [3] - capability [4] - consensus [5] - crisis
+[6] - distr          [7] - evidence  [8] - feegrant  [9] - gov        [A] - group     [B] - ibc
+[C] - icacontroller  [D] - icahost   [E] - luqchain  [F] - mint       [G] - params    [H] - slashing
+[I] - staking        [J] - transfer  [K] - upgrade   [L] - vesting
+*/
+// struct MultistoreData {
+//         bytes32 luqchainIavlStateHash; // [E]
+//         bytes32 mintStoreMerkleHash; // [F]
+//         bytes32 icacontrollerToIcahostMerkleHash; // [I6]
+//         bytes32 feegrantToIbcMerkleHash; // [I10]
+//         bytes32 accToEvidenceMerkleHash; // [I15]
+//         bytes32 paramsToVestingMerkleHash; // [I20]
+// }
+// type MultiStoreTreeFields struct {
+// 	LuqchainIavlStateHash            []byte `protobuf:"bytes,1,opt,name=luqchain_iavl_state_hash,json=luqchainIavlStateHash,proto3" json:"luqchain_iavl_state_hash,omitempty"`
+// 	MintStoreMerkleHash              []byte `protobuf:"bytes,2,opt,name=mint_store_merkle_hash,json=mintStoreMerkleHash,proto3" json:"mint_store_merkle_hash,omitempty"`
+// 	IcacontrollerToIcahostMerkleHash []byte `protobuf:"bytes,3,opt,name=icacontroller_to_icahost_merkle_hash,json=icacontrollerToIcahostMerkleHash,proto3" json:"icacontroller_to_icahost_merkle_hash,omitempty"`
+// 	FeegrantToIbcMerkleHash          []byte `protobuf:"bytes,4,opt,name=feegrant_to_ibc_merkle_hash,json=feegrantToIbcMerkleHash,proto3" json:"feegrant_to_ibc_merkle_hash,omitempty"`
+// 	AccToEvidenceMerkleHash          []byte `protobuf:"bytes,5,opt,name=acc_to_evidence_merkle_hash,json=accToEvidenceMerkleHash,proto3" json:"acc_to_evidence_merkle_hash,omitempty"`
+// 	ParamsToVestingMerkleHash        []byte `protobuf:"bytes,6,opt,name=params_to_vesting_merkle_hash,json=paramsToVestingMerkleHash,proto3" json:"params_to_vesting_merkle_hash,omitempty"`
+// }
+    function getAppHash2(MultistoreData memory _store) public pure returns(bytes32) {
         bytes32 _appHash = _merkleInnerHash(
             _merkleInnerHash(
                 _store.authToFeegrantStoresMerkleHash,
@@ -277,6 +311,47 @@ contract LayerLightClientBridge {
             ),
             _store.transferToUpgradeStoresMerkleHash
         );
+        return _appHash;
+    }
+
+    function getAppHash3(MultistoreData memory _store) public pure returns(bytes32) {
+        bytes32 _appHash = _merkleInnerHash(
+            _merkleInnerHash(
+                _store.authToFeegrantStoresMerkleHash,
+                _merkleInnerHash( 
+                    _store.govToMintStoresMerkleHash,
+                    _merkleInnerHash(
+                        _store.slashingToStakingStoresMerkleHash, // [I6]
+                        _merkleInnerHash(
+                            _merkleLeafHash( // [E]
+                                abi.encodePacked(
+                                        hex"066c7571636861696e20", // oracle prefix (uint8(6) + "oracle" + uint8(32)) NOTE: Switch to Tellor Layer oracle prefix
+                                        sha256(                    // using (uint8(6) + "luqchain" + uint8(32)) /// oracle: 0x6f7261636c65 ; luqchain: 0x6c7571636861696e
+                                            abi.encodePacked(
+                                                _store.oracleIAVLStateHash
+                                            )
+                                        )
+                                    )
+                            ),
+                            _store.paramsStoreMerkleHash // [F]
+                        )
+                    )
+                )
+            ),
+            _store.transferToUpgradeStoresMerkleHash // [I20]
+        );
+        return _appHash;
+    }
+
+    function getAppHash(MultistoreData memory _store) public pure returns(bytes32) {
+        // oracle prefix (uint8(6) + "oracle" + uint8(32)) NOTE: Switch to Tellor Layer oracle prefix
+        // using (uint8(8) + "luqchain" + uint8(32)) /// oracle: 0x6f7261636c65 ; luqchain: 0x6c7571636861696e
+        bytes32 _ELeaf = _merkleLeafHash(abi.encodePacked(hex"086c7571636861696e20", sha256(abi.encodePacked(_store.oracleIAVLStateHash))));
+        bytes32 _I7 = _merkleInnerHash(_ELeaf, _store.paramsStoreMerkleHash);
+        bytes32 _I11 = _merkleInnerHash(_store.slashingToStakingStoresMerkleHash, _I7);
+        bytes32 _I16 = _merkleInnerHash(_store.govToMintStoresMerkleHash, _I11); 
+        bytes32 _I19 = _merkleInnerHash(_store.authToFeegrantStoresMerkleHash, _I16);
+        bytes32 _appHash = _merkleInnerHash(_I19, _store.transferToUpgradeStoresMerkleHash);
         return _appHash;
     }
 
