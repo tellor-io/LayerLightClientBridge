@@ -52,15 +52,6 @@ contract LayerLightClientBridge {
         bytes32 transferToUpgradeStoresMerkleHash; // [I15]
     }
 
-    // struct MultistoreData {
-    //     bytes32 oracleIAVLStateHash;
-    //     bytes32 mintStoreMerkleHash;
-    //     bytes32 icaControllerToIcaMerkleHash;
-    //     bytes32 feeGrantToIbcMerkleHash;
-    //     bytes32 accToEvidenceMerkleHash;
-    //     bytes32 paramsToVestingMerkleHash;
-    // }
-
     struct BlockHeaderMerkleParts {
         bytes32 versionAndChainIdHash; // [1A]
         uint64 height; // [2]
@@ -277,44 +268,7 @@ Right[F], Left[I6], Left[I10], Left[I15], Right[I20]
 //         bytes32 accToEvidenceMerkleHash; // [I15]
 //         bytes32 paramsToVestingMerkleHash; // [I20]
 // }
-// type MultiStoreTreeFields struct {
-// 	LuqchainIavlStateHash            []byte `protobuf:"bytes,1,opt,name=luqchain_iavl_state_hash,json=luqchainIavlStateHash,proto3" json:"luqchain_iavl_state_hash,omitempty"`
-// 	MintStoreMerkleHash              []byte `protobuf:"bytes,2,opt,name=mint_store_merkle_hash,json=mintStoreMerkleHash,proto3" json:"mint_store_merkle_hash,omitempty"`
-// 	IcacontrollerToIcahostMerkleHash []byte `protobuf:"bytes,3,opt,name=icacontroller_to_icahost_merkle_hash,json=icacontrollerToIcahostMerkleHash,proto3" json:"icacontroller_to_icahost_merkle_hash,omitempty"`
-// 	FeegrantToIbcMerkleHash          []byte `protobuf:"bytes,4,opt,name=feegrant_to_ibc_merkle_hash,json=feegrantToIbcMerkleHash,proto3" json:"feegrant_to_ibc_merkle_hash,omitempty"`
-// 	AccToEvidenceMerkleHash          []byte `protobuf:"bytes,5,opt,name=acc_to_evidence_merkle_hash,json=accToEvidenceMerkleHash,proto3" json:"acc_to_evidence_merkle_hash,omitempty"`
-// 	ParamsToVestingMerkleHash        []byte `protobuf:"bytes,6,opt,name=params_to_vesting_merkle_hash,json=paramsToVestingMerkleHash,proto3" json:"params_to_vesting_merkle_hash,omitempty"`
-// }
     function getAppHash2(MultistoreData memory _store) public pure returns(bytes32) {
-        bytes32 _appHash = _merkleInnerHash(
-            _merkleInnerHash(
-                _store.authToFeegrantStoresMerkleHash,
-                _merkleInnerHash( 
-                    _store.govToMintStoresMerkleHash,
-                    _merkleInnerHash(
-                        _merkleInnerHash(
-                            _merkleLeafHash(
-                                abi.encodePacked(
-                                        hex"066c7571636861696e20", // oracle prefix (uint8(6) + "oracle" + uint8(32)) NOTE: Switch to Tellor Layer oracle prefix
-                                        sha256(                    // using (uint8(6) + "luqchain" + uint8(32)) /// oracle: 0x6f7261636c65 ; luqchain: 0x6c7571636861696e
-                                            abi.encodePacked(
-                                                _store.oracleIAVLStateHash
-                                            )
-                                        )
-                                    )
-                            ),
-                            _store.paramsStoreMerkleHash
-                        ),
-                        _store.slashingToStakingStoresMerkleHash
-                    )
-                )
-            ),
-            _store.transferToUpgradeStoresMerkleHash
-        );
-        return _appHash;
-    }
-
-    function getAppHash3(MultistoreData memory _store) public pure returns(bytes32) {
         bytes32 _appHash = _merkleInnerHash(
             _merkleInnerHash(
                 _store.authToFeegrantStoresMerkleHash,
@@ -440,7 +394,7 @@ Right[F], Left[I6], Left[I10], Left[I15], Right[I20]
     /// @dev Returns the address that signed on the given block hash.
     /// @param _blockHash The block hash that the validator signed data on.
     function checkPartsAndEncodedCommonParts(CommonEncodedVotePartData memory _votePart, bytes32 _blockHash)
-        internal
+        public
         pure
         returns (bytes memory)
     {
@@ -473,7 +427,7 @@ Right[F], Left[I6], Left[I10], Left[I15], Right[I20]
     /// @param _commonEncodedPart The first common part of the encoded canonical vote.
     /// @param _encodedChainID The last part of the encoded canonical vote.
     function checkTimeAndRecoverSigner(TMSignatureData memory _sigData, bytes memory _commonEncodedPart, bytes memory _encodedChainID)
-        internal
+        public
         pure
         returns (address)
     {
@@ -497,7 +451,7 @@ Right[F], Left[I6], Left[I10], Left[I15], Right[I20]
             ecrecover(
                 sha256(abi.encodePacked(uint8(encodedCanonicalVote.length), encodedCanonicalVote)),
                 _sigData.v,
-                _sigData.r,
+                _sigData.r,   
                 _sigData.s
             );
     }

@@ -7,7 +7,8 @@ import "../src/LayerLightClientBridge.sol";
 contract CounterTest is Test {
     LayerLightClientBridge public bridge;
 
-    address[] validatorAddr = [0x35C132b955bF9e284005b81ACDb3D2FE5096c714];
+    // address[] validatorAddr = [0x35C132b955bF9e284005b81ACDb3D2FE5096c714];
+    address[] validatorAddr = [0x0E3FbA8eAcE8fE7393D20597c3bB3e9A03d68900];
     uint256[] validatorPower = [100];
     string chainIdString = "luqchain";
 
@@ -32,15 +33,15 @@ contract CounterTest is Test {
     });
 
     LayerLightClientBridge.CommonEncodedVotePartData votePart = LayerLightClientBridge.CommonEncodedVotePartData({
-        signedDataPrefix: "0x080211846800000000000022480A20",
-        signedDataSuffix: "0x122408011220418E093FE4C97A9B3F207FECF974AB732B8FB7B037317C28DCFE2C339BFD8BA6"
+        signedDataPrefix: hex"080211846800000000000022480A20",
+        signedDataSuffix: hex"122408011220418E093FE4C97A9B3F207FECF974AB732B8FB7B037317C28DCFE2C339BFD8BA6"
     });
 
     LayerLightClientBridge.TMSignatureData signatureData = LayerLightClientBridge.TMSignatureData({
         r: 0xf3226fb35be59364391f539eb1ffadc9ae8aee3ad5d98557030a1d3de3cf22e4,
         s: 0x180b53c7729c3d6caae03bb1a387bbb8f6b6258231452cbf43a4ba7efbc72427,
         v: 28,
-        encodedTimestamp: "0x089E91A3A80610B0B69062"
+        encodedTimestamp: hex"089E91A3A80610B0B69062"
     });
 
     LayerLightClientBridge.TMSignatureData[] sigDataArray;
@@ -63,8 +64,21 @@ contract CounterTest is Test {
         assertEq(result, true);
     }
 
+    // function testVerifyBlockHeader() public {
+    //     address result = bridge.verifyBlockHeader(multistore, merkleParts, votePart, sigDataArray);
+    //     assertEq(result, validatorAddr[0]);
+    // }
+
     function testGetAppHash() public {
-        bytes32 appHash = bridge.getAppHash(multistore);
-        assertEq(appHash, 0xfadf5693808d1fd6f1c7acb3c4ebeeaac51e17c5a76edae581e63377efde6f1a);
+        bytes32 _appHash = bridge.getAppHash(multistore);
+        assertEq(_appHash, 0xfadf5693808d1fd6f1c7acb3c4ebeeaac51e17c5a76edae581e63377efde6f1a);
     }
+
+    function testGetBlockHeader() public {
+        bytes32 _appHash = bridge.getAppHash(multistore);
+        bytes32 _blockHeader = bridge.getBlockHeader(merkleParts, _appHash);
+        assertEq(_blockHeader, 0x81a518dd8aa830de59dc35357638ebdc21c455230da624476709cf52410a36cc);
+    }
+
+   
 }
